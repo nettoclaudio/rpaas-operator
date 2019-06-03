@@ -1,41 +1,52 @@
-# RPaaS Operator
+# RPaaS v2
 
-This project has two parts: operator and API
+[![Build Status](https://travis-ci.org/tsuru/rpaas-operator.svg?branch=master)](https://travis-ci.org/tsuru/rpaas-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tsuru/rpaas-operator)](https://goreportcard.com/report/github.com/tsuru/rpaas-operator)
 
-## Operator
+NOTE: This project is the replacement of the [RPaaS][rpaas-v1-repository].
+Hence, we'll refer to it only as RPaaS v2 (although there are no breaking
+changes between them).
 
-The [operator](https://coreos.com/operators/) is responsible for managing RPaaS instances running inside the cluster.
+---
 
-### Running locally
+## About
 
-```sh
-make local
-```
+RPaaS, which stands for Reverse Proxy as a Service, provides a easy and fast
+way to manage [NGINX][nginx-site]-based reverse proxy into a cloud
+infrastructure. Such reverse proxy (aka RPaaS instance) handles incoming HTTP
+request and forward to the configured destination application (backend).
 
-### Running in Kubernetes
+Futhermore, it supports adding TLS terminating, cache (according to HTTP cache
+headers from backend's response), purge cached objects, scale up/down the
+instances and so forth.
 
-- build the docker image: `make build`
-- push the image to a registry accessible from your cluster: `docker push ...`
-- `make deploy`
+RPaaS v2 is broken into two parts: Operator and API.
 
-## API
+### Operator
 
-The API doesn't need to run inside Kubernetes, but it needs credentials to access Kubernetes API, to manage RPaaS instances, binds and plans.
+An Kubernetes application, built following the [Operator framework][kubernetes-operator],
+which transform the high-level RPaaS Custom Resources into more basic Kubernetes
+objects (such as Secret, ConfigMap and so on) and Nginx Custom Resources
+(provided by [nginx-operator][nginx-operator-repository] project).
 
-It follows [tsuru service API contract](https://app.swaggerhub.com/apis/tsuru/tsuru-service_api/1.0.0).
+### API
 
-### Running locally
+Just a web API which manages the high-level RPaaS Custom Resources inside the
+Kubernetes cluster. Unlike the Operator, it does not need run inside the
+Kubernetes cluster but needs the credentials to manipulate basic Kubernetes
+object as well as RPaaS Custom Resources.
 
-To run outside the cluster, it needs a `KUBECONFIG` env var, pointing to your Kubernetes configuration. Start the API with:
+## Contributing
 
-```sh
-make api
-```
+TODO
 
-### Running in Kubernetes
+## License
 
-When running inside the cluster, the API knows how to get the required credentials. Follow these steps:
+RPaaS v2 is an open source project authored by [Globo.com][opensource-globocom]
+and released under the BS3 3-Clause license.
 
-- build the docker image: `docker build . -t my-registry/tsuru/rpaas-api`
-- push the image to a registry accessible from your cluster: `docker push my-registry/tsuru/rpaas-api`
-- start with `kubectl apply -f deploy/api.yaml`
+[rpaas-v1-repository]: https://github.com/tsuru/rpaas.git
+[opensource-globocom]: https://opensource.globo.com
+[nginx-site]: https://nginx.org/
+[kubernetes-operator]: https://coreos.com/operators/
+[nginx-operator-repository]: https://github.com/tsuru/nginx-operator.git
