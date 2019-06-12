@@ -27,6 +27,7 @@ type RpaasInstanceSpec struct {
 
 	// Locations are configuration file fragments used as location blocks in
 	// nginx config.
+	// +optional
 	Locations []Location `json:"locations,omitempty"`
 
 	// Certificates are a set of attributes that relate the certificate's
@@ -100,8 +101,10 @@ type ConfigRef struct {
 type ConfigKind string
 
 type Location struct {
-	Config      ConfigRef `json:"config"`
-	Destination string    `json:"destination,omitempty"`
+	Path        string     `json:"path"`
+	Destination string     `json:"destination,omitempty"`
+	HTTPSOnly   bool       `json:"httpsOnly,omitempty"`
+	Config      *ConfigRef `json:"config,omitempty"`
 }
 
 const (

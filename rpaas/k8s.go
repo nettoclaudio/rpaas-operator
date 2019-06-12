@@ -473,6 +473,106 @@ func (m *k8sRpaasManager) UpdateExtraFiles(ctx context.Context, instanceName str
 	return m.cli.Update(ctx, instance)
 }
 
+func (m *k8sRpaasManager) DeleteRoute(ctx context.Context, instanceName, path string) error {
+	return nil
+}
+
+func (m *k8sRpaasManager) GetRoutes(ctx context.Context, instanceName string) ([]Route, error) {
+	return []Route{}, nil
+}
+
+func (m *k8sRpaasManager) UpdateRoute(ctx context.Context, instanceName string, route Route) error {
+	// validating the route arguments
+	if err := validateRoute(route); err != nil {
+		return err
+	}
+
+	instance, err := m.GetInstance(ctx, instanceName)
+	if err != nil {
+		return err
+	}
+
+	for i, loc := range instance.Spec.Locations {
+		if loc.Path == route.Path {
+			config := loc.Config
+
+			if route.Content != "" {
+				locationConfigMap := newConfigMapForLocations(instance, route.Path, map[string][]byte{
+					"content": []byte(route.Content),
+				})
+
+				err := m.cli.Create(ctx, locationConfigMap)
+				if err != nil && !k8sErrors.IsAlreadyExists(err) {
+					return err
+				}
+
+				if config == nil {
+					config = &v1alpha1.ConfigRef{}
+				}
+
+				config.Kind = v1alpha1.ConfigKindConfigMap
+				config.Name = locationConfigMap.Name
+			}
+
+			if route.Destination != "" {
+				config = nil
+			}
+
+			instance.Spec.Locations[i] = v1alpha1.Location{
+				Path:        route.Path,
+				Destination: route.Destination,
+				HTTPSOnly:   route.HTTPSOnly,
+				Config:      config,
+			}
+
+			return m.cli.Update(ctx, instance)
+		}
+	}
+
+	// adding a new entry to locations
+	var config *ConfigRef
+
+	if route.Content != "" {
+		locationConfigMap := newConfigMapForLocations(instance, route.Path, map[string][]byte{
+			"content": []byte(route.Content),
+		})
+
+		if err = m.cli.Create(ctx, locationConfigMap); err != nil {
+			return err
+		}
+
+		config = &v1alpha1.ConfigRef{
+			Kind: v1alpha1.ConfigKindConfigMap,
+			Name: locationConfigMap.Name,
+		}
+	}
+
+	instance.Spec.Locations = append(instance.Spec.Locations, v1alpha1.Locations{
+		Path:        route.Path,
+		Destination: route.Destination,
+		HTTPSOnly:   route.HTTPSOnly,
+		Config:      config,
+	})
+
+	return m.cli.Update(ctx, instance)
+}
+
+func validateRoute(r Route) error {
+	if r.Path == "" {
+		return &ValidationError{Msg: "path cannot be empty"}
+	}
+
+	if r.Destination != "" && route.Content != "" {
+		return &ValidationError{Msg: "content and destination cannot be defined at same time"}
+	}
+
+	if r.Destination == "" && route.Content == "" {
+		return &ValidationError{Msg: "content or destination should be defined"}
+	}
+
+	return nil
+}
+
 func (m *k8sRpaasManager) createExtraFiles(ctx context.Context, instance v1alpha1.RpaasInstance, data map[string][]byte) (*corev1.ConfigMap, error) {
 	hash := util.SHA256(data)
 	cm := corev1.ConfigMap{
@@ -785,6 +885,29 @@ func newSecretForCertificates(instance v1alpha1.RpaasInstance, data map[string][
 			},
 			Annotations: map[string]string{
 				"rpaas.extensions.tsuru.io/sha256-hash": hash,
+			},
+		},
+		Data: data,
+	}
+}
+
+func newConfigMapForLocations(ri v1alpha1.RpaasInstance, path string, data map[string][]byte) *corev1.ConfigMap {
+	pathHash := util.SHA256(path)
+	dataHash := util.SHA256(data)
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-locations-%s-%s", ri.Name, pathHash[:10], dataHash[:10]),
+			Namespace: instance.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&ri, schema.GroupVersionKind{
+					Group:   v1alpha1.SchemeGroupVersion.Group,
+					Version: v1alpha1.SchemeGroupVersion.Version,
+					Kind:    "RpaasInstance",
+				}),
+			},
+			Annotations: map[string]string{
+				"rpaas.extensions.tsuru.io/sha256-hash": dataHash,
 			},
 		},
 		Data: data,

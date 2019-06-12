@@ -59,6 +59,19 @@ type ExtraFileHandler interface {
 	UpdateExtraFiles(ctx context.Context, instanceName string, files ...File) error
 }
 
+type Route struct {
+	Path        string `form:"path" json:"path"`
+	Content     string `form:"content" json:"content,omitempty"`
+	Destination string `form:"destination" json:"destination,omitempty"`
+	HTTPSOnly   bool   `form:"https_only" json:"https_only"`
+}
+
+type RouteHandler interface {
+	DeleteRoute(ctx context.Context, instanceName, path string)
+	GetRoutes(ctx context.Context, instanceName string) ([]Route, error)
+	UpdateRoute(ctx context.Context, instanceName string, route Route) error
+}
+
 type CreateArgs struct {
 	Name        string   `json:"name" form:"name"`
 	Plan        string   `json:"plan" form:"plan"`
@@ -82,6 +95,7 @@ type PodStatus struct {
 type RpaasManager interface {
 	ConfigurationBlockHandler
 	ExtraFileHandler
+	RouteHandler
 
 	UpdateCertificate(ctx context.Context, instance, name string, cert tls.Certificate) error
 	CreateInstance(ctx context.Context, args CreateArgs) error
