@@ -67,7 +67,7 @@ type Route struct {
 }
 
 type RouteHandler interface {
-	DeleteRoute(ctx context.Context, instanceName, path string)
+	DeleteRoute(ctx context.Context, instanceName, path string) error
 	GetRoutes(ctx context.Context, instanceName string) ([]Route, error)
 	UpdateRoute(ctx context.Context, instanceName string, route Route) error
 }

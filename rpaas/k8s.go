@@ -497,8 +497,8 @@ func (m *k8sRpaasManager) UpdateRoute(ctx context.Context, instanceName string, 
 			config := loc.Config
 
 			if route.Content != "" {
-				locationConfigMap := newConfigMapForLocations(instance, route.Path, map[string][]byte{
-					"content": []byte(route.Content),
+				locationConfigMap := newConfigMapForLocations(*instance, route.Path, map[string]string{
+					"content": route.Content,
 				})
 
 				err := m.cli.Create(ctx, locationConfigMap)
@@ -530,11 +530,11 @@ func (m *k8sRpaasManager) UpdateRoute(ctx context.Context, instanceName string, 
 	}
 
 	// adding a new entry to locations
-	var config *ConfigRef
+	var config *v1alpha1.ConfigRef
 
 	if route.Content != "" {
-		locationConfigMap := newConfigMapForLocations(instance, route.Path, map[string][]byte{
-			"content": []byte(route.Content),
+		locationConfigMap := newConfigMapForLocations(*instance, route.Path, map[string]string{
+			"content": route.Content,
 		})
 
 		if err = m.cli.Create(ctx, locationConfigMap); err != nil {
@@ -547,7 +547,7 @@ func (m *k8sRpaasManager) UpdateRoute(ctx context.Context, instanceName string, 
 		}
 	}
 
-	instance.Spec.Locations = append(instance.Spec.Locations, v1alpha1.Locations{
+	instance.Spec.Locations = append(instance.Spec.Locations, v1alpha1.Location{
 		Path:        route.Path,
 		Destination: route.Destination,
 		HTTPSOnly:   route.HTTPSOnly,
@@ -562,11 +562,11 @@ func validateRoute(r Route) error {
 		return &ValidationError{Msg: "path cannot be empty"}
 	}
 
-	if r.Destination != "" && route.Content != "" {
+	if r.Destination != "" && r.Content != "" {
 		return &ValidationError{Msg: "content and destination cannot be defined at same time"}
 	}
 
-	if r.Destination == "" && route.Content == "" {
+	if r.Destination == "" && r.Content == "" {
 		return &ValidationError{Msg: "content or destination should be defined"}
 	}
 
@@ -891,14 +891,14 @@ func newSecretForCertificates(instance v1alpha1.RpaasInstance, data map[string][
 	}
 }
 
-func newConfigMapForLocations(ri v1alpha1.RpaasInstance, path string, data map[string][]byte) *corev1.ConfigMap {
+func newConfigMapForLocations(ri v1alpha1.RpaasInstance, path string, data map[string]string) *corev1.ConfigMap {
 	pathHash := util.SHA256(path)
 	dataHash := util.SHA256(data)
 
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-locations-%s-%s", ri.Name, pathHash[:10], dataHash[:10]),
-			Namespace: instance.Namespace,
+			Namespace: ri.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(&ri, schema.GroupVersionKind{
 					Group:   v1alpha1.SchemeGroupVersion.Group,

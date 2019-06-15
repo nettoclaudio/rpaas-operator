@@ -1275,6 +1275,78 @@ func Test_k8sRpaasManager_DeleteExtraFiles(t *testing.T) {
 	}
 }
 
+func Test_k8sRpaasManager_UpdateRoute(t *testing.T) {
+	scheme := runtime.NewScheme()
+	corev1.AddToScheme(scheme)
+	v1alpha1.SchemeBuilder.AddToScheme(scheme)
+
+	instance1 := newEmptyRpaasInstance()
+	instance1.Spec.ExtraFiles = &nginxv1alpha1.FilesRef{
+		Name: "my-instance-extra-files",
+		Files: map[string]string{
+			"index.html":     "index.html",
+			"waf_rules.conf": "waf/rules.conf",
+		},
+	}
+
+	resources := []runtime.Object{instance1}
+
+	tests := []struct {
+		name      string
+		instance  string
+		route     Route
+		assertion func(t *testing.T, err error, m *k8sRpaasManager)
+	}{
+		{
+			name:     "when adding a route with no path",
+			instance: "my-instance",
+			route: Route{
+				Path:        "",
+				Destination: "app.tsuru.example.com",
+			},
+			assertion: func(t *testing.T, err error, m *k8sRpaasManager) {
+				assert.Error(t, err)
+				expected := &ValidationError{Msg: "path cannot be empty"}
+				assert.Equal(t, expected, err)
+			},
+		},
+		{
+			name:     "when adding a route with content and destination",
+			instance: "my-instance",
+			route: Route{
+				Path:        "/",
+				Destination: "app.tsuru.example.com",
+				Content:     "Hello world",
+			},
+			assertion: func(t *testing.T, err error, m *k8sRpaasManager) {
+				assert.Error(t, err)
+				expected := &ValidationError{Msg: "content and destination cannot be defined at same time"}
+				assert.Equal(t, expected, err)
+			},
+		},
+		{
+			name:     "when adding a route with no content and destination",
+			instance: "my-instance",
+			route: Route{
+				Path: "/",
+			},
+			assertion: func(t *testing.T, err error, m *k8sRpaasManager) {
+				assert.Error(t, err)
+				expected := &ValidationError{Msg: "content or destination should be defined"}
+				assert.Equal(t, expected, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			manager := &k8sRpaasManager{cli: fake.NewFakeClientWithScheme(scheme, resources...)}
+			err := manager.UpdateRoute(nil, tt.instance, tt.route)
+			tt.assertion(t, err, manager)
+		})
+	}
+}
+
 func Test_isPathValid(t *testing.T) {
 	tests := []struct {
 		path     string
