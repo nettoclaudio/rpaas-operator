@@ -15,6 +15,7 @@ import (
 	extensionsv1alpha1 "github.com/tsuru/rpaas-operator/pkg/apis/extensions/v1alpha1"
 	"github.com/tsuru/rpaas-operator/pkg/util"
 	"github.com/tsuru/rpaas-operator/rpaas/nginx"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,9 +136,17 @@ func (r *ReconcileRpaasInstance) Reconcile(request reconcile.Request) (reconcile
 			return reconcile.Result{}, err
 		}
 	}
+
 	nginx := newNginx(instance, plan, configMap)
-	err = r.reconcileNginx(nginx)
-	return reconcile.Result{}, err
+	if err = r.reconcileNginx(nginx); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err = r.reconcileHPA(*instance); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	return reconcile.Result{}, nil
 }
 
 func mergePlans(base v1alpha1.RpaasPlanSpec, override v1alpha1.RpaasPlanSpec) (v1alpha1.RpaasPlanSpec, error) {
@@ -162,6 +171,20 @@ func mergePlans(base v1alpha1.RpaasPlanSpec, override v1alpha1.RpaasPlanSpec) (v
 		return base, err
 	}
 	return base, nil
+}
+
+func (r *ReconcileRpaasInstance) reconcileHPA(instance v1alpha1.RpaasInstance) error {
+	hpa := newHPA(instance)
+	err := r.client.Create(context.TODO(), &hpa)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		if instance.Spec.AutoscalerSpec == nil {
+			return r.client.Delete(context.TODO(), &hpa)
+		}
+
+		return r.client.Update(context.TODO(), &hpa)
+	}
+
+	return err
 }
 
 func (r *ReconcileRpaasInstance) reconcileConfigMap(configMap *corev1.ConfigMap) error {
@@ -388,6 +411,71 @@ func newNginx(instance *v1alpha1.RpaasInstance, plan *v1alpha1.RpaasPlan, config
 			},
 		},
 	}
+}
+
+func newHPA(instance v1alpha1.RpaasInstance) autoscalingv2beta2.HorizontalPodAutoscaler {
+	hpa := autoscalingv2beta2.HorizontalPodAutoscaler{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "autoscaling/v2beta2",
+			Kind:       "HorizontalPodAutoscaler",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&instance, schema.GroupVersionKind{
+					Group:   v1alpha1.SchemeGroupVersion.Group,
+					Version: v1alpha1.SchemeGroupVersion.Version,
+					Kind:    "RpaasInstance",
+				}),
+			},
+		},
+		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: autoscalingv2beta2.CrossVersionObjectReference{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				Name:       instance.Name,
+			},
+		},
+	}
+
+	if instance.Spec.AutoscalerSpec == nil {
+		return hpa
+	}
+
+	hpa.Spec.MinReplicas = instance.Spec.AutoscalerSpec.MinReplicas
+	hpa.Spec.MaxReplicas = instance.Spec.AutoscalerSpec.MaxReplicas
+
+	var metrics []autoscalingv2beta2.MetricSpec
+	if instance.Spec.AutoscalerSpec.AverageCPUUtilization != nil {
+		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
+			Type: autoscalingv2beta2.ResourceMetricSourceType,
+			Resource: &autoscalingv2beta2.ResourceMetricSource{
+				Name: corev1.ResourceCPU,
+				Target: autoscalingv2beta2.MetricTarget{
+					Type:               autoscalingv2beta2.UtilizationMetricType,
+					AverageUtilization: instance.Spec.AutoscalerSpec.AverageCPUUtilization,
+				},
+			},
+		})
+	}
+
+	if instance.Spec.AutoscalerSpec.AverageMemoryUtilization != nil {
+		metrics = append(metrics, autoscalingv2beta2.MetricSpec{
+			Type: autoscalingv2beta2.ResourceMetricSourceType,
+			Resource: &autoscalingv2beta2.ResourceMetricSource{
+				Name: corev1.ResourceMemory,
+				Target: autoscalingv2beta2.MetricTarget{
+					Type:               autoscalingv2beta2.UtilizationMetricType,
+					AverageUtilization: instance.Spec.AutoscalerSpec.AverageMemoryUtilization,
+				},
+			},
+		})
+	}
+
+	hpa.Spec.Metrics = metrics
+
+	return hpa
 }
 
 func shouldDeleteOldConfig(instance *v1alpha1.RpaasInstance, configList *corev1.ConfigMapList) bool {

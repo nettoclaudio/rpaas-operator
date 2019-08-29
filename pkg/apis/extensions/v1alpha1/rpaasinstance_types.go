@@ -11,46 +11,39 @@ import (
 type RpaasInstanceSpec struct {
 	// Number of desired pods. This is a pointer to distinguish between explicit
 	// zero and not specified. Defaults to 1.
-	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
-
 	// PlanName is the name of the rpaasplan instance.
 	PlanName string `json:"planName"`
-
 	// PlanTemplate allow overriding fields in the specified plan.
 	PlanTemplate *RpaasPlanSpec `json:"planTemplate,omitempty"`
-
 	// Host is the application address where all incoming HTTP will be
 	// forwarded for.
 	// +optional
 	Host string `json:"host,omitempty"`
-
 	// Blocks are configuration file fragments added to the generated nginx
 	// config.
 	Blocks map[BlockType]ConfigRef `json:"blocks,omitempty"`
-
 	// Locations hold paths that can be configured to forward resquests to
 	// one destination app or include raw NGINX configurations itself.
 	// +optional
 	Locations []Location `json:"locations,omitempty"`
-
 	// Certificates are a set of attributes that relate the certificate's
 	// location in the cluster (Secret resource name) and its destination into
 	// Pods.
 	// +optional
 	Certificates *nginxv1alpha1.TLSSecret `json:"certificates,omitempty"`
-
 	// Service to expose the nginx instance
 	// +optional
 	Service *nginxv1alpha1.NginxService `json:"service,omitempty"`
-
 	// ExtraFiles points to a ConfigMap where the files are stored.
 	// +optional
 	ExtraFiles *nginxv1alpha1.FilesRef `json:"extraFiles,omitempty"`
-
 	// The number of old Configs to retain to allow rollback.
 	// +optional
 	ConfigHistoryLimit *int `json:"configHistoryLimit,omitempty"`
+	// AutoscalerSpec ...
+	// +optional
+	AutoscalerSpec *RpaasAutoscalerSpec `json:"autoscalerSpec,omitempty"`
 }
 
 // RpaasInstanceStatus defines the observed state of RpaasInstance
@@ -112,6 +105,14 @@ type ValueSource struct {
 type Value struct {
 	Value     string       `json:"value,omitempty"`
 	ValueFrom *ValueSource `json:"valueFrom,omitempty"`
+}
+
+type RpaasAutoscalerSpec struct {
+	MaxReplicas int32
+	MinReplicas *int32
+
+	AverageCPUUtilization    *int32
+	AverageMemoryUtilization *int32
 }
 
 const (
