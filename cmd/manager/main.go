@@ -6,9 +6,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/tsuru/rpaas-operator/pkg/apis"
 	"github.com/tsuru/rpaas-operator/pkg/controller"
@@ -39,6 +41,8 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
+	syncPeriod time.Duration
+
 	metricsHost               = "0.0.0.0"
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
@@ -56,6 +60,8 @@ func main() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
+
+	flag.DurationVar(&syncPeriod, "sync-period", time.Duration(5*time.Minute), "Time period which the observed resources are reconciled")
 
 	err := rpaasConfig.Init()
 	if err != nil {
@@ -96,6 +102,7 @@ func main() {
 	mgr, err := manager.New(cfg, manager.Options{
 		MapperProvider:     restmapper.NewDynamicRESTMapper,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		SyncPeriod:         &syncPeriod,
 	})
 	if err != nil {
 		log.Error(err, "")
