@@ -12,6 +12,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/labstack/echo/v4 v4.1.10
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/olekukonko/tablewriter v0.0.4
 	github.com/operator-framework/operator-sdk v0.9.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
@@ -19,6 +20,9 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.4.0
 	github.com/tsuru/nginx-operator v0.3.2
+	github.com/tsuru/rpaas-operator/pkg/rpaas/client v0.0.0-20191106194047-f9601776ddd8
+	github.com/urfave/cli v1.22.2
+	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.0.0-20190726022912-69e1bce1dad5
 	k8s.io/apiextensions-apiserver v0.0.0-20190726024412-102230e288fd // indirect
 	k8s.io/apimachinery v0.0.0-20190727130956-f97a4e5b4abc
