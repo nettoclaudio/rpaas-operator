@@ -214,6 +214,7 @@ func newEcho() *echo.Echo {
 	e.GET("/resources/:instance/route", getRoutes)
 	e.POST("/resources/:instance/route", updateRoute)
 	e.POST("/resources/:instance/purge", cachePurge)
+	e.GET("/resources/:instance/exec", remoteExec)
 
 	return e
 }

@@ -15,10 +15,17 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
 	"strings"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/pkg/errors"
 	nginxv1alpha1 "github.com/tsuru/nginx-operator/pkg/apis/nginx/v1alpha1"
@@ -30,6 +37,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,12 +52,19 @@ const (
 var _ RpaasManager = &k8sRpaasManager{}
 
 type k8sRpaasManager struct {
+	config       *rest.Config
+	clientSet    *kubernetes.Clientset
 	nonCachedCli client.Client
 	cli          client.Client
 	cacheManager CacheManager
 }
 
 func NewK8S(mgr manager.Manager) (RpaasManager, error) {
+	clientSet, err := kubernetes.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return nil, err
+	}
+
 	nonCachedCli, err := client.New(mgr.GetConfig(), client.Options{
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
@@ -57,7 +72,10 @@ func NewK8S(mgr manager.Manager) (RpaasManager, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &k8sRpaasManager{
+		config:       mgr.GetConfig(),
+		clientSet:    clientSet,
 		nonCachedCli: nonCachedCli,
 		cli:          mgr.GetClient(),
 		cacheManager: nginxManager.NewNginxManager(),
@@ -1253,4 +1271,71 @@ func setTeamOwner(instance *v1alpha1.RpaasInstance, team string) {
 	instance.Annotations = mergeMap(instance.Annotations, newLabels)
 	instance.Labels = mergeMap(instance.Labels, newLabels)
 	instance.Spec.PodTemplate.Labels = mergeMap(instance.Spec.PodTemplate.Labels, newLabels)
+}
+
+func (m *k8sRpaasManager) Exec(ctx context.Context, instance string, options ExecOptions) error {
+	pod, err := m.getPod(ctx, instance, options.Unit)
+	if err != nil {
+		return err
+	}
+
+	req := m.clientSet.CoreV1().
+		RESTClient().
+		Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: "nginx",
+			Command:   options.Command,
+			Stdout:    true,
+			Stderr:    true,
+			Stdin:     options.Stdin != nil,
+			TTY:       options.TTY,
+		}, scheme.ParameterCodec)
+
+	return Execute("POST", req.URL(), m.config, options.Stdin, options.Stdout, options.Stderr, options.TTY, nil)
+}
+
+func (m *k8sRpaasManager) getPod(ctx context.Context, instance, podName string) (*corev1.Pod, error) {
+	var podList corev1.PodList
+	err := m.cli.List(ctx, &podList, &client.ListOptions{
+		Namespace:     getServiceName(),
+		LabelSelector: labels.SelectorFromSet(labelsForRpaasInstance(instance)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(podList.Items) == 0 {
+		return nil, fmt.Errorf("no pods found for %q", instance)
+	}
+
+	if podName != "" {
+		for i := range podList.Items {
+			if podList.Items[i].Name == podName {
+				return &podList.Items[i], nil
+			}
+		}
+
+		return nil, fmt.Errorf("pod %s not found", podName)
+	}
+
+	return &podList.Items[0], nil
+}
+
+func Execute(method string, url *url.URL, config *rest.Config, stdin io.Reader, stdout, stderr io.Writer, tty bool, terminalSizeQueue remotecommand.TerminalSizeQueue) error {
+	exec, err := remotecommand.NewSPDYExecutor(config, method, url)
+	if err != nil {
+		return err
+	}
+
+	return exec.Stream(remotecommand.StreamOptions{
+		Stdin:             stdin,
+		Stdout:            stdout,
+		Stderr:            stderr,
+		Tty:               tty,
+		TerminalSizeQueue: terminalSizeQueue,
+	})
 }

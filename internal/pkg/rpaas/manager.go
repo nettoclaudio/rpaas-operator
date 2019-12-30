@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	nginxv1alpha1 "github.com/tsuru/nginx-operator/pkg/apis/nginx/v1alpha1"
 	"github.com/tsuru/rpaas-operator/pkg/apis/extensions/v1alpha1"
@@ -135,6 +136,15 @@ type AutoscaleHandler interface {
 	DeleteAutoscale(ctx context.Context, name string) error
 }
 
+type ExecOptions struct {
+	Command []string
+	Unit    string
+	Stdin   io.Reader
+	Stdout  io.Writer
+	Stderr  io.Writer
+	TTY     bool
+}
+
 type RpaasManager interface {
 	ConfigurationBlockHandler
 	ExtraFileHandler
@@ -154,4 +164,5 @@ type RpaasManager interface {
 	BindApp(ctx context.Context, instanceName string, args BindAppArgs) error
 	UnbindApp(ctx context.Context, instanceName string) error
 	PurgeCache(ctx context.Context, instanceName string, args PurgeCacheArgs) (int, error)
+	Exec(ctx context.Context, instanceName string, options ExecOptions) error
 }

@@ -7,6 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-openapi/spec v0.19.2
 	github.com/google/gops v0.3.6
+	github.com/gorilla/websocket v1.4.0
 	github.com/imdario/mergo v0.3.8
 	github.com/labstack/echo/v4 v4.1.11
 	github.com/mitchellh/mapstructure v1.1.2
