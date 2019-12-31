@@ -43,6 +43,7 @@ type RpaasManager struct {
 	FakeCreateAutoscale   func(instanceName string, autoscale *rpaas.Autoscale) error
 	FakeUpdateAutoscale   func(instanceName string, autoscale *rpaas.Autoscale) error
 	FakeDeleteAutoscale   func(name string) error
+	FakeExec              func(instanceName string, options rpaas.ExecOptions) error
 }
 
 func (m *RpaasManager) UpdateCertificate(ctx context.Context, instance, name string, c tls.Certificate) error {
@@ -230,6 +231,13 @@ func (m *RpaasManager) UpdateAutoscale(ctx context.Context, instanceName string,
 func (m *RpaasManager) DeleteAutoscale(ctx context.Context, instanceName string) error {
 	if m.FakeDeleteAutoscale != nil {
 		return m.FakeDeleteAutoscale(instanceName)
+	}
+	return nil
+}
+
+func (m *RpaasManager) Exec(ctx context.Context, instanceName string, options rpaas.ExecOptions) error {
+	if m.FakeExec != nil {
+		return m.FakeExec(instanceName, options)
 	}
 	return nil
 }
