@@ -25,10 +25,16 @@ func Test_Init(t *testing.T) {
 	}{
 		{
 			expected: RpaasConfig{
-				ServiceName:  "rpaasv2",
-				SyncInterval: 5 * time.Minute,
-				PortRangeMin: 20000,
-				PortRangeMax: 30000,
+				ServiceName:               "rpaasv2",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -37,10 +43,16 @@ port-range-max: 31000
 sync-interval: 2m
 `,
 			expected: RpaasConfig{
-				ServiceName:  "rpaasv2",
-				SyncInterval: 2 * time.Minute,
-				PortRangeMin: 20000,
-				PortRangeMax: 31000,
+				ServiceName:               "rpaasv2",
+				SyncInterval:              2 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              31000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -49,12 +61,18 @@ tls-certificate: /var/share/tls/mycert.pem
 tls-key: /var/share/tls/key.pem
 `,
 			expected: RpaasConfig{
-				ServiceName:    "rpaasv2",
-				TLSCertificate: "/var/share/tls/mycert.pem",
-				TLSKey:         "/var/share/tls/key.pem",
-				SyncInterval:   5 * time.Minute,
-				PortRangeMin:   20000,
-				PortRangeMax:   30000,
+				ServiceName:               "rpaasv2",
+				TLSCertificate:            "/var/share/tls/mycert.pem",
+				TLSKey:                    "/var/share/tls/key.pem",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -62,11 +80,17 @@ tls-key: /var/share/tls/key.pem
 api-username: u1
 `,
 			expected: RpaasConfig{
-				APIUsername:  "u1",
-				ServiceName:  "rpaasv2",
-				SyncInterval: 5 * time.Minute,
-				PortRangeMin: 20000,
-				PortRangeMax: 30000,
+				APIUsername:               "u1",
+				ServiceName:               "rpaasv2",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -79,12 +103,18 @@ service-name: rpaasv2be
 				"RPAASV2_API_PASSWORD": "p1",
 			},
 			expected: RpaasConfig{
-				APIUsername:  "u1",
-				APIPassword:  "p1",
-				ServiceName:  "rpaasv2be",
-				SyncInterval: 5 * time.Minute,
-				PortRangeMin: 20000,
-				PortRangeMax: 30000,
+				APIUsername:               "u1",
+				APIPassword:               "p1",
+				ServiceName:               "rpaasv2be",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -95,10 +125,16 @@ service-name: ignored-service-name
 				"RPAASV2_SERVICE_NAME": "my-custom-service-name",
 			},
 			expected: RpaasConfig{
-				ServiceName:  "my-custom-service-name",
-				SyncInterval: 5 * time.Minute,
-				PortRangeMin: 20000,
-				PortRangeMax: 30000,
+				ServiceName:               "my-custom-service-name",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
 			},
 		},
 		{
@@ -164,6 +200,34 @@ team-affinity:
 						},
 					},
 				},
+				WebsocketHandshakeTimeout: 5 * time.Second,
+				WebsocketReadBufferSize:   1024,
+				WebsocketWriteBufferSize:  4096,
+				WebsocketPingInterval:     5 * time.Second,
+				WebsocketMaxIdleTime:      10 * time.Second,
+				WebsocketWriteWait:        time.Second,
+			},
+		},
+		{
+			config: `
+websocket-handshake-timeout: 10s
+websocket-read-buffer-size: 512
+websocket-write-buffer-size: 512
+websocket-ping-interval: 2s
+websocket-max-idle-time: 30s
+websocket-write-wait: 2s
+`,
+			expected: RpaasConfig{
+				ServiceName:               "rpaasv2",
+				SyncInterval:              5 * time.Minute,
+				PortRangeMin:              20000,
+				PortRangeMax:              30000,
+				WebsocketHandshakeTimeout: 10 * time.Second,
+				WebsocketReadBufferSize:   512,
+				WebsocketWriteBufferSize:  512,
+				WebsocketPingInterval:     2 * time.Second,
+				WebsocketMaxIdleTime:      30 * time.Second,
+				WebsocketWriteWait:        2 * time.Second,
 			},
 		},
 	}

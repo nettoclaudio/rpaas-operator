@@ -41,7 +41,7 @@ type RpaasConfig struct {
 	PortRangeMax              int32                      `json:"port-range-max"`
 	WebsocketHandshakeTimeout time.Duration              `json:"websocket-handshake-timeout"`
 	WebsocketReadBufferSize   int                        `json:"websocket-read-buffer-size"`
-	WebsocketWriteBufferSize  int                        `json:"webscoket-write-buffer-size"`
+	WebsocketWriteBufferSize  int                        `json:"websocket-write-buffer-size"`
 	WebsocketPingInterval     time.Duration              `json:"websocket-ping-interval"`
 	WebsocketMaxIdleTime      time.Duration              `json:"websocket-max-idle-time"`
 	WebsocketWriteWait        time.Duration              `json:"websocket-write-wait"`
